@@ -2,7 +2,7 @@
     <div class="text-container">
         <div class="music-player">
             <div class="img-area">
-              <img src="../assets/Rosallia.jpg">
+              <img :src="currentImage">
             </div>
             <h2>{{ playlist[currentIndex].title }}</h2>
             <p>{{ playlist[currentIndex].artist }}</p>
@@ -28,8 +28,8 @@
     </div>
     
 </template>
-<script>
 
+<script>
 export default {
   data() {
     return {
@@ -39,10 +39,18 @@ export default {
       timeSlider: 0,
       volumeSlider: 100,
       playlist: [
-        { title: 'Candy', artist: 'Rosallia', src: "../assets/candy.mp3", picture: "../assets/Rosallia.PNG"}
+        { title: 'Drunken Dwarves', artist: 'Wind Rose', src: "drunken-dwarves.mp3", picture: "dwarf.jpg"},
+        { title: 'Candy', artist: 'Rosallia', src: "candy.mp3", picture: "Rosallia.jpg"}
       ],
       currentTime: "0:00",
-      duration: "0:00"
+      duration: "0:00",
+      eventLoadedMetaData: undefined,
+      eventTimeUpdate: undefined
+    }
+  },
+  computed: {
+    currentImage() {
+      return require(`../assets/${this.playlist[this.currentIndex].picture}`);
     }
   },
   methods: {
@@ -53,13 +61,14 @@ export default {
             return
         }
         this.isPlaying = true
-        const sound = await import("../assets/candy.mp3");
+        const sound = await import(`../assets/${this.playlist[this.currentIndex].src}`);
+
         // Add validation
         this.audio = new Audio(sound.default);
         this.audio.play()
 
 
-        this.audio.addEventListener('loadedmetadata', () => {
+        this.eventLoadedMetaData = this.audio.addEventListener('loadedmetadata', () => {
             this.duration = this.formatTime(this.audio.duration)
             this.audio.volume = parseFloat(this.volumeSlider / 100);
             this.audio.currentTime = this.audio.duration * this.timeSlider / 100;
@@ -67,7 +76,7 @@ export default {
             this.isReset()
         });
 
-        this.audio.addEventListener('timeupdate', () => {
+        this.eventTimeUpdate = this.audio.addEventListener('timeupdate', () => {
             this.currentTime = this.formatTime(this.audio.currentTime)
             this.timeSlider = (this.audio.currentTime / this.audio.duration) * 100;
             this.isReset()
@@ -76,6 +85,10 @@ export default {
     isReset() {
         if (this.audio.currentTime >= this.audio.duration) {
             this.timeSlider = 0
+            this.audio.removeEventListener('loadedmetadata', this.eventLoadedMetaData);
+            this.eventLoadedMetaData = undefined
+            this.audio.removeEventListener('timeupdate', this.eventTimeUpdate);
+            this.eventTimeUpdate = undefined
             this.audio = undefined
             this.currentTime = "0:00"
             this.duration = "0:00"
